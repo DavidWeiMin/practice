@@ -7,6 +7,13 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+# TA = 1000 * np.ones(N,1) # 银行总资产向量
+# eta = 0.5 * np.ones(N,1) # 银行储户资产占银行总资产比重向量
+# M = eta * TA # 银行储户资产向量
+# phi = 0.05 * np.ones(N,1) # 流动性资产占总资产比重
+# V = phi * TA # 流动性资产向量
+
 def createNetwork(alpha,beta,tao,N,gamma,k):
     # 《金融市场中传染风险建模与分析》P65构建银行间网络框架
     C = np.zeros((N,N))
@@ -62,15 +69,26 @@ def balanceSheet1(p,q,m,IL,G):
 def unique_index(s,element):
     return [index for index,value in enumerate(s) if value==element]
 
+def addshock(shockWho):
+    temp = []
+    newShockWho = [0,0]
+    for who in shockWho[:,1]:
+        if who not in temp:
+            location = unique_index(shockWho[:,1],who)
+            temp = temp + [who]
+            newShockWho = np.row_stack((newShockWho,[sum(shockWho[location,0]),who]))
+    newShockWho = np.delete(newShockWho,0,0)
+    return newShockWho
 
 def contagion(shock,NW,L,bankrupt,G): # 可以考虑把shock和who整合成两列数据
     # shockwho都是一个矩阵，第一列是shock，第二列是who
     # 计算违约之前应当将shockwho中对同一银行的冲击进行叠加
     hasDefault = False
-    shock[:,1] = np.round(shock[:,1],decimals=0)
-    newShock = [0,0,0]
+    shockWho = addshock(shockWho)
+    shockWho[:,1] = np.round(shockWho[:,1],decimals=0)
+    newShockWho = [0,0,0]
     newBankrupt = []
-    for value in shock:
+    for value in shockWho:
         if value[2] != '!':
             if value[0] > L[value[1],value[2]]:
                 value[0] = L[value[1],value[2]]
@@ -85,11 +103,12 @@ def contagion(shock,NW,L,bankrupt,G): # 可以考虑把shock和who整合成两�
                     totalShock = value[0] - NW[int(value[1])]
                 else:
                     totalShock = sum(L[:,int(value[1])])
-                indivshock = totalShock * L[who,int(value[1])] / sum(L[who,int(value[1])])
-                temp = np.column_stack((indivshock,who))
-                newShock = np.row_stack((newShock,temp))
+                shock = totalShock * L[who,int(value[1])] / sum(L[who,int(value[1])])
+                temp = np.column_stack((shock,who))
+                newShockWho = np.row_stack((newShockWho,temp))
         else:
             NW[int(value[1])] = NW[int(value[1])] - value[0]
+    # 将newBankrupt填充至1xN的向量
     if hasDefault:
         G[newBankrupt,:] = 0
         L[newBankrupt,:] = 0
@@ -110,7 +129,7 @@ N = 5
 IL = 1000 * np.ones(N)
 G = createNetwork(0.5,1.2,0.3,N,1.35,100)
 TA,L,IL,I,M,BA,EA,NW = balanceSheet1(0.3,0.1,0.05,IL,G)
-shock = np.array([[111,1,'!'],[233,2,'!'],[111,1,'!'],[111,1,'!']])
+shockWho = np.array([[111,1，'!'],[233,2,'!'],[111,1,'!'],[111,1,'!']])
 bankrupt = contagion(shock,NW,L,np.zeros(N),G)
 np.delete(bankrupt,0,0)
 print(bankrupt)
