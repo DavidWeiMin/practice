@@ -360,5 +360,3 @@ import pickle
 # print(df.loc[['a','c','d'],'A'])
 
 
-print('都为你解开你的夸奖我s')
-input()
